@@ -749,6 +749,22 @@ async def index(request: web.Request) -> web.FileResponse:
     return web.FileResponse(WEB_DIR / "index.html")
 
 
+async def quiet_disconnects(app: web.Application) -> None:
+    """Не печатать трассировки, когда телефон просто оборвал соединение."""
+    loop = asyncio.get_running_loop()
+    default = loop.get_exception_handler()
+
+    def handler(loop, context):
+        if isinstance(context.get("exception"), (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)):
+            return
+        if default:
+            default(loop, context)
+        else:
+            loop.default_exception_handler(context)
+
+    loop.set_exception_handler(handler)
+
+
 async def on_shutdown(app: web.Application) -> None:
     state: AppState = app["state"]
     if state.session is not None:
@@ -888,6 +904,7 @@ def main() -> None:
     app.router.add_get("/", index)
     app.router.add_post("/offer", handle_offer)
     app.router.add_static("/", WEB_DIR, show_index=False)
+    app.on_startup.append(quiet_disconnects)
     app.on_shutdown.append(on_shutdown)
 
     if not args.no_keep_awake:

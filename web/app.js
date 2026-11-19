@@ -390,7 +390,11 @@ touchEl.addEventListener('touchstart', (e) => {
   const n = e.touches.length;
   const now = performance.now();
 
-  if (n === 1) {
+  if (n === 1 && inBlackZone(local(e.touches[0]))) {
+    // Чёрные поля по бокам — только для масштаба, на ноутбук ничего не уходит.
+    const p = local(e.touches[0]);
+    g = { type: 'zone', sy: p.y, y: p.y, t0: now, moved: false, s0: S.scale };
+  } else if (n === 1) {
     const p = local(e.touches[0]);
     g = { type: 'one', id: e.touches[0].identifier, sx: p.x, sy: p.y, x: p.x, y: p.y, t0: now,
           moved: false, held: false, dragging: false, scrolling: false };
@@ -459,12 +463,17 @@ touchEl.addEventListener('touchmove', (e) => {
     const mid = { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 };
     const d = Math.hypot(pa.x - pb.x, pa.y - pb.y);
     if (!g.how) {
-      if (Math.abs(d - g.d0) > 28) {
-        g.how = 'zoom';
+      // Щипок: расстояние между пальцами меняется сильнее, чем смещается их центр
+      // (в т.ч. когда двигается только один палец). Прокрутка: оба пальца идут вместе.
+      const dd = Math.abs(d - g.d0);
+      const dm = Math.hypot(mid.x - g.mid0.x, mid.y - g.mid0.y);
+      if (dd > 14 && dd >= dm * 0.8) g.how = 'zoom';
+      else if (dm > 14) g.how = 'scroll';
+      if (g.how === 'zoom') {
         g.cx = (g.mid0.x - S.baseX - S.tx) / S.scale;   // точка контента под пальцами
         g.cy = (g.mid0.y - S.baseY - S.ty) / S.scale;
-      } else if (Math.hypot(mid.x - g.mid0.x, mid.y - g.mid0.y) > TAP_SLOP) {
-        g.how = 'scroll';
+        g.d0 = d; g.s0 = S.scale;
+        hidePanels();
       }
       if (g.how) g.moved = true;
     }
@@ -480,8 +489,25 @@ touchEl.addEventListener('touchmove', (e) => {
     g.mid = mid;
   } else if (g.type === 'three') {
     g.moved = true;
+  } else if (g.type === 'zone') {
+    // Вести пальцем вверх — приблизить, вниз — отдалить.
+    const t = e.touches[0]; if (!t) return;
+    const p = local(t);
+    if (!g.moved && Math.abs(p.y - g.sy) > TAP_SLOP) g.moved = true;
+    if (g.moved) zoomAt(S.W / 2, S.H / 2, g.s0 * Math.exp((g.sy - p.y) / 160));
   }
 }, { passive: false });
+
+/* Чёрные поля вокруг картинки (видны, пока экран не увеличен на всю ширину/высоту). */
+function inBlackZone(p) {
+  const left = S.baseX + S.tx, top = S.baseY + S.ty;
+  const right = left + S.baseW * S.scale, bottom = top + S.baseH * S.scale;
+  const m = 2;
+  return p.x < left - m || p.x > right + m || p.y < top - m || p.y > bottom + m;
+}
+
+let lastZoneTap = 0;
+function snapZoom() { if (S.scale < 1.06) { S.scale = 1; clampView(); applyView(); } }
 
 function endGesture(e, cancelled) {
   e.preventDefault();
@@ -526,8 +552,19 @@ function endGesture(e, cancelled) {
     }
     // Если один палец ещё на экране — игнорируем его до полного отпускания.
     g = left === 0 ? null : { type: 'rest', moved: true };
+    snapZoom();
   } else if (g.type === 'three') {
     if (!cancelled && !g.moved && now - g.t0 < TAP_TIME * 1.5) toggleKeyboard();
+    g = left === 0 ? null : { type: 'rest', moved: true };
+  } else if (g.type === 'zone') {
+    if (!cancelled && !g.moved) {
+      // Двойной тап по полю: увеличить в 2,5 раза / вернуть как было.
+      if (now - lastZoneTap < DOUBLE_TAP_TIME) {
+        zoomAt(S.W / 2, S.H / 2, S.scale > 1.05 ? 1 : 2.5);
+        lastZoneTap = 0;
+      } else lastZoneTap = now;
+    }
+    snapZoom();
     g = left === 0 ? null : { type: 'rest', moved: true };
   } else if (left === 0) {
     g = null;
