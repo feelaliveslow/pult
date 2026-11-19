@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Пульт">
+<meta name="theme-color" content="#000000">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="stylesheet" href="style.css">
+<title>Пульт</title>
+</head>
+<body>
+
+<!-- Скрытое поле: через него открывается клавиатура iPhone -->
+<input id="kbd" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+       spellcheck="false" enterkeyhint="send" aria-label="Клавиатура">
+
+<main id="viewport">
+  <div id="stage">
+    <video id="video" playsinline autoplay muted disablepictureinpicture></video>
+    <div id="cursor"></div>
+  </div>
+  <div id="ring"></div>
+  <div id="touch"></div>
+  <div id="stats" hidden></div>
+  <div id="status"><div id="status-text">Подключение…</div></div>
+</main>
+
+<section id="panel-keys" class="panel" hidden>
+  <div class="row">
+    <button class="mod" data-mod="ctrl">Ctrl</button>
+    <button class="mod" data-mod="alt" data-label-mac="Option">Alt</button>
+    <button class="mod" data-mod="shift">Shift</button>
+    <button class="mod" data-mod="cmd" data-label-mac="Cmd" data-label-win="Win">Win</button>
+    <button data-key="esc">Esc</button>
+    <button data-key="tab">Tab</button>
+  </div>
+  <div class="row">
+    <button data-key="left">←</button>
+    <button data-key="up">↑</button>
+    <button data-key="down">↓</button>
+    <button data-key="right">→</button>
+    <button data-key="enter">Enter</button>
+    <button data-key="backspace">⌫</button>
+    <button data-key="delete">Del</button>
+  </div>
+  <div class="row">
+    <button data-key="home">Home</button>
+    <button data-key="end">End</button>
+    <button data-key="page_up">PgUp</button>
+    <button data-key="page_down">PgDn</button>
+    <button data-key="space">Пробел</button>
+  </div>
+  <div class="row wrap" id="shortcuts"></div>
+  <div class="row scroll">
+    <button data-key="f1">F1</button><button data-key="f2">F2</button><button data-key="f3">F3</button>
+    <button data-key="f4">F4</button><button data-key="f5">F5</button><button data-key="f6">F6</button>
+    <button data-key="f7">F7</button><button data-key="f8">F8</button><button data-key="f9">F9</button>
+    <button data-key="f10">F10</button><button data-key="f11">F11</button><button data-key="f12">F12</button>
+  </div>
+  <div class="row">
+    <button data-key="volume_down">🔉</button>
+    <button data-key="volume_up">🔊</button>
+    <button data-key="volume_mute">🔇</button>
+    <button data-key="play_pause">⏯</button>
+  </div>
+</section>
+
+<section id="panel-settings" class="panel" hidden>
+  <div class="label">Качество картинки</div>
+  <div class="row" id="quality">
+    <button data-q="eco">Эконом</button>
+    <button data-q="balanced">Баланс</button>
+    <button data-q="sharp">Чётко</button>
+    <button data-q="smooth">60 fps</button>
+  </div>
+  <div class="hint" id="quality-hint"></div>
+  <div class="label" id="monitors-label" hidden>Монитор</div>
+  <div class="row" id="monitors" hidden></div>
+  <label class="slider">Скорость курсора (тачпад)
+    <input type="range" id="sens" min="0.5" max="4" step="0.1">
+  </label>
+  <label class="slider">Скорость прокрутки
+    <input type="range" id="scrollspeed" min="0.2" max="3" step="0.1">
+  </label>
+  <label class="check"><input type="checkbox" id="showstats"> Показывать задержку и fps</label>
+  <div class="row">
+    <button id="btn-reconnect">Переподключить</button>
+    <button id="btn-logout">Сменить код</button>
+  </div>
+  <div class="hint">
+    <b>Режим «Касание»:</b> тап — клик; удержание — правый клик; удержание и вести — перетаскивание;
+    один палец — прокрутка (или сдвиг увеличенного экрана); щипок — увеличение; два пальца — прокрутка.<br>
+    <b>Режим «Тачпад»:</b> палец двигает курсор; тап — клик; тап двумя пальцами — правый клик;
+    удержание и вести — перетаскивание; два пальца — прокрутка.<br>
+    Тап тремя пальцами — клавиатура.
+  </div>
+</section>
+
+<nav id="toolbar">
+  <button id="btn-kbd" title="Клавиатура">⌨︎</button>
+  <button id="btn-mode" title="Режим управления">Касание</button>
+  <button id="btn-keys" title="Клавиши и сочетания">Клавиши</button>
+  <button id="btn-fit" title="Вписать экран">⤢</button>
+  <button id="btn-settings" title="Настройки">⚙︎</button>
+  <button id="btn-hide" title="Скрыть панель">▾</button>
+</nav>
+<button id="btn-show" hidden title="Показать панель">▴</button>
+
+<div id="login" hidden>
+  <form id="login-form">
+    <h1>Пульт</h1>
+    <p>Введите код доступа — он показан в окне программы на ноутбуке.</p>
+    <input id="login-token" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+           spellcheck="false" placeholder="например 1a2b3c4d-5e6f7a8b">
+    <div id="login-error"></div>
+    <button type="submit">Подключиться</button>
+  </form>
+</div>
+
+<!-- iOS 18+: нажатие на такой переключатель даёт отклик вибромотором -->
+<label id="haptic" aria-hidden="true"><input type="checkbox" switch></label>
+
+<script src="app.js"></script>
+</body>
+</html>
