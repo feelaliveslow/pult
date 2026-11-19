@@ -1,12 +1,13 @@
 name: Сборка Pult.exe
 
 # Собирает готовую программу для Windows, которую не нужно устанавливать
-# (Python внутри). При публикации тега вида v1.0 файл автоматически
-# прикладывается к странице Releases.
+# (Python внутри). При публикации новой версии на странице Releases файл
+# Pult.exe автоматически к ней прикладывается.
 on:
+  release:
+    types: [published]
   push:
     branches: ["**"]
-    tags: ["v*"]
     paths:
       - "laptop/**"
       - "web/**"
@@ -63,7 +64,7 @@ jobs:
           path: dist/Pult.exe
 
       - name: Публикация в Releases
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/Pult.exe
