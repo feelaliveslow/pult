@@ -866,6 +866,19 @@ def main() -> None:
         except Exception:
             pass
 
+    if SYSTEM == "Windows":
+        # В классической консоли щелчок мышью по окну включает «выделение»
+        # и замораживает программу. Отключаем этот режим.
+        try:
+            k32 = ctypes.windll.kernel32
+            handle = k32.GetStdHandle(-10)
+            mode = ctypes.c_uint32()
+            if k32.GetConsoleMode(handle, ctypes.byref(mode)):
+                k32.SetConsoleMode(handle, (mode.value & ~0x0040) | 0x0080)
+        except Exception:
+            pass
+
+    print("Запуск…", flush=True)
     _set_bitrate_limits(SETTINGS.kbps)
     token = load_token(args.new_token)
     capturer = Capturer(args.monitor)
