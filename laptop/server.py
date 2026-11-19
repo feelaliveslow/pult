@@ -62,7 +62,8 @@ from pynput.mouse import Controller as MouseController  # noqa: E402
 log = logging.getLogger("pult")
 
 ROOT = Path(__file__).resolve().parent
-WEB_DIR = ROOT.parent / "web"
+FROZEN = getattr(sys, "frozen", False)  # запущено как готовый Pult.exe
+WEB_DIR = Path(sys._MEIPASS) / "web" if FROZEN else ROOT.parent / "web"
 CONFIG_DIR = Path.home() / ".screen-viewer"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 VIDEO_CLOCK = 90000
@@ -928,4 +929,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        log.exception("Программа остановилась из-за ошибки")
+        if FROZEN:
+            # Иначе окно закроется сразу и ошибку не прочитать.
+            input("\nНажмите Enter, чтобы закрыть окно…")
+        raise
